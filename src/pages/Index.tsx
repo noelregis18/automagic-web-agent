@@ -4,16 +4,21 @@ import Header from '@/components/Header';
 import ChatInterface from '@/components/ChatInterface';
 import BrowserPreview from '@/components/BrowserPreview';
 import StatusBar from '@/components/StatusBar';
+import TaskScheduler from '@/components/TaskScheduler';
+import PlatformInfo from '@/components/PlatformInfo';
+import ConversationContextView from '@/components/ConversationContext';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatMessageProps } from '@/components/ChatMessage';
 import browserService, { BrowserAction, ExtractedData } from '@/services/browserService';
+import contextService from '@/services/contextService';
 import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessageProps[]>([
     {
-      content: "Hi! I'm your Browser Automation Agent. I can help you automate tasks in your web browser. Just tell me what you'd like to do!",
+      content: "Hi! I'm your Browser Automation Agent. I can help you automate tasks in your web browser across Windows, macOS, and Linux. Just tell me what you'd like to do!",
       role: 'assistant',
       timestamp: new Date()
     }
@@ -25,6 +30,7 @@ const Index = () => {
   const [startTime] = useState(new Date());
   const [uptime, setUptime] = useState('0:00:00');
   const [lastAction, setLastAction] = useState('None');
+  const [activeTab, setActiveTab] = useState('browser');
   
   // Calculate uptime
   useEffect(() => {
@@ -128,12 +134,29 @@ const Index = () => {
         </div>
         
         <div className="flex flex-col h-full p-4">
-          <BrowserPreview 
-            currentUrl={currentUrl}
-            browserActions={browserActions}
-            extractedData={extractedData}
-            isActive={isProcessing}
-          />
+          <PlatformInfo />
+          
+          <ConversationContextView />
+          
+          <Tabs defaultValue="browser" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid grid-cols-2 mb-4">
+              <TabsTrigger value="browser">Browser</TabsTrigger>
+              <TabsTrigger value="scheduler">Task Scheduler</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="browser" className="mt-0">
+              <BrowserPreview 
+                currentUrl={currentUrl}
+                browserActions={browserActions}
+                extractedData={extractedData}
+                isActive={isProcessing}
+              />
+            </TabsContent>
+            
+            <TabsContent value="scheduler" className="mt-0">
+              <TaskScheduler />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
       
