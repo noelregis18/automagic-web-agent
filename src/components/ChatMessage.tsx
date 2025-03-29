@@ -10,13 +10,15 @@ export interface ChatMessageProps {
   role: MessageRole;
   timestamp: Date;
   isLoading?: boolean;
+  isTyping?: boolean;
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ 
   content, 
   role, 
   timestamp,
-  isLoading = false
+  isLoading = false,
+  isTyping = false
 }) => {
   const isUser = role === 'user';
   
@@ -42,11 +44,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
             : "bg-gray-800 text-gray-100"
         )}>
           {isLoading ? (
-            <div className="typing-indicator animate-typing">
-              Thinking...
+            <div className="typing-indicator flex space-x-1 items-center">
+              <span className="text-sm">Thinking</span>
+              <span className="animate-bounce delay-0">.</span>
+              <span className="animate-bounce delay-150">.</span>
+              <span className="animate-bounce delay-300">.</span>
             </div>
           ) : (
             <div className="whitespace-pre-wrap">{content}</div>
+          )}
+          
+          {isTyping && !isLoading && (
+            <div className="h-4 w-2 ml-1 inline-block bg-gray-400 animate-blink"></div>
           )}
         </div>
         

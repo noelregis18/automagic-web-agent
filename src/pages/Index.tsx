@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import ChatInterface from '@/components/ChatInterface';
 import BrowserPreview from '@/components/BrowserPreview';
@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatMessageProps } from '@/components/ChatMessage';
 import browserService, { BrowserAction, ExtractedData } from '@/services/browserService';
 import contextService from '@/services/contextService';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const { toast } = useToast();
@@ -31,6 +31,7 @@ const Index = () => {
   const [uptime, setUptime] = useState('0:00:00');
   const [lastAction, setLastAction] = useState('None');
   const [activeTab, setActiveTab] = useState('browser');
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   
   // Calculate uptime
   useEffect(() => {
@@ -45,6 +46,26 @@ const Index = () => {
     
     return () => clearInterval(uptimeInterval);
   }, [startTime]);
+  
+  const handleCancelRequest = useCallback(() => {
+    if (abortController) {
+      abortController.abort();
+      setIsProcessing(false);
+      
+      // Add cancellation message
+      const cancellationMessage: ChatMessageProps = {
+        content: "Request cancelled by user.",
+        role: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => prev.filter(msg => !msg.isLoading).concat(cancellationMessage));
+      
+      toast({
+        title: "Request cancelled",
+        description: "The current operation has been stopped",
+      });
+    }
+  }, [abortController, toast]);
   
   const handleSendMessage = async (message: string) => {
     // Add user message to chat
@@ -65,6 +86,10 @@ const Index = () => {
     };
     setMessages(prev => [...prev, loadingMessage]);
     
+    // Create a new AbortController for this request
+    const controller = new AbortController();
+    setAbortController(controller);
+    
     try {
       // Process the command through our browser service
       const { response, actions, newUrl, extractedData } = await browserService.executeCommand(message);
@@ -72,12 +97,36 @@ const Index = () => {
       // Update UI with results
       setMessages(prev => prev.filter(msg => !msg.isLoading));
       
-      const assistantMessage: ChatMessageProps = {
-        content: response,
-        role: 'assistant',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      // Split response into typing animation chunks
+      const responseWords = response.split(' ');
+      let currentResponse = '';
+      
+      for (let i = 0; i < responseWords.length; i++) {
+        // Check if request was cancelled
+        if (controller.signal.aborted) {
+          break;
+        }
+        
+        currentResponse += (i === 0 ? '' : ' ') + responseWords[i];
+        
+        const assistantMessage: ChatMessageProps = {
+          content: currentResponse,
+          role: 'assistant',
+          timestamp: new Date(),
+          isTyping: i < responseWords.length - 1
+        };
+        
+        setMessages(prev => {
+          // Remove previous typing message if exists
+          const filtered = prev.filter(msg => !msg.isTyping);
+          return [...filtered, assistantMessage];
+        });
+        
+        // Delay between words to simulate typing
+        if (i < responseWords.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
       
       if (actions.length > 0) {
         setBrowserActions(prev => [...prev, ...actions]);
@@ -100,7 +149,12 @@ const Index = () => {
           : "The browser automation task has been completed.",
       });
     } catch (error) {
-      // Handle errors
+      // Check if this was an abort error
+      if (error.name === 'AbortError') {
+        return; // Already handled by the cancel function
+      }
+      
+      // Handle other errors
       setMessages(prev => prev.filter(msg => !msg.isLoading));
       
       const errorMessage: ChatMessageProps = {
@@ -117,6 +171,7 @@ const Index = () => {
       });
     } finally {
       setIsProcessing(false);
+      setAbortController(null);
     }
   };
   
@@ -130,6 +185,7 @@ const Index = () => {
             onSendMessage={handleSendMessage} 
             messages={messages}
             isProcessing={isProcessing}
+            onCancelRequest={handleCancelRequest}
           />
         </div>
         
