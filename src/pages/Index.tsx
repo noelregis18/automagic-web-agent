@@ -6,7 +6,7 @@ import BrowserPreview from '@/components/BrowserPreview';
 import StatusBar from '@/components/StatusBar';
 import { Separator } from '@/components/ui/separator';
 import { ChatMessageProps } from '@/components/ChatMessage';
-import browserService, { BrowserAction } from '@/services/browserService';
+import browserService, { BrowserAction, ExtractedData } from '@/services/browserService';
 import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
@@ -20,6 +20,7 @@ const Index = () => {
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [browserActions, setBrowserActions] = useState<BrowserAction[]>([]);
+  const [extractedData, setExtractedData] = useState<ExtractedData[]>([]);
   const [currentUrl, setCurrentUrl] = useState('about:blank');
   const [startTime] = useState(new Date());
   const [uptime, setUptime] = useState('0:00:00');
@@ -60,7 +61,7 @@ const Index = () => {
     
     try {
       // Process the command through our browser service
-      const { response, actions, newUrl } = await browserService.executeCommand(message);
+      const { response, actions, newUrl, extractedData } = await browserService.executeCommand(message);
       
       // Update UI with results
       setMessages(prev => prev.filter(msg => !msg.isLoading));
@@ -81,10 +82,16 @@ const Index = () => {
         setCurrentUrl(newUrl);
       }
       
+      if (extractedData && extractedData.length > 0) {
+        setExtractedData(prev => [...prev, ...extractedData]);
+      }
+      
       // Notify success
       toast({
         title: "Command executed",
-        description: "The browser automation task has been completed.",
+        description: actions.length > 0 
+          ? `Completed ${actions.length} browser actions` 
+          : "The browser automation task has been completed.",
       });
     } catch (error) {
       // Handle errors
@@ -124,6 +131,7 @@ const Index = () => {
           <BrowserPreview 
             currentUrl={currentUrl}
             browserActions={browserActions}
+            extractedData={extractedData}
             isActive={isProcessing}
           />
         </div>

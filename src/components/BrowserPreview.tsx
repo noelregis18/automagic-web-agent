@@ -2,25 +2,20 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-
-type BrowserAction = {
-  id: string;
-  type: 'navigation' | 'click' | 'input' | 'extract';
-  description: string;
-  status: 'pending' | 'active' | 'completed' | 'error';
-  details?: string;
-  timestamp: Date;
-};
+import ExtractedDataView from './ExtractedDataView';
+import { BrowserAction, ExtractedData } from '@/services/browserService';
 
 interface BrowserPreviewProps {
   currentUrl: string;
   browserActions: BrowserAction[];
+  extractedData: ExtractedData[];
   isActive: boolean;
 }
 
 const BrowserPreview: React.FC<BrowserPreviewProps> = ({ 
   currentUrl, 
-  browserActions, 
+  browserActions,
+  extractedData,
   isActive 
 }) => {
   return (
@@ -42,6 +37,7 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
           <TabsList className="mb-4">
             <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="actions">Actions</TabsTrigger>
+            <TabsTrigger value="data">Extracted Data</TabsTrigger>
             <TabsTrigger value="console">Console</TabsTrigger>
           </TabsList>
           
@@ -87,11 +83,15 @@ const BrowserPreview: React.FC<BrowserPreviewProps> = ({
             </div>
           </TabsContent>
           
+          <TabsContent value="data" className="h-[calc(100%-40px)]">
+            <ExtractedDataView data={extractedData} />
+          </TabsContent>
+          
           <TabsContent value="console" className="h-[calc(100%-40px)]">
             <div className="w-full h-full bg-black rounded p-3 font-mono text-sm text-green-400 overflow-y-auto">
-              <div>> Browser agent initialized</div>
-              <div>> Ready to receive commands</div>
-              <div>> Waiting for user input...</div>
+              <div>{">"} Browser agent initialized</div>
+              <div>{">"} Ready to receive commands</div>
+              <div>{">"} Waiting for user input...</div>
             </div>
           </TabsContent>
         </Tabs>
